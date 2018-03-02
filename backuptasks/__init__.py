@@ -10,12 +10,28 @@ import argparse
 import logging
 import configparser
 import sys
+import re
+from datetime import timedelta
 from hddfancontrol import Drive
 from hddfancontrol import colored_logging
 
 import tasks
 
 actions_classes = { "snapshot": tasks.Snapshot }
+
+class ConfigError(Exception):
+
+    def __init__(self, message):
+        self.__message = message
+
+    def __str__(self):
+        return self.__message
+
+def parse_period(period_str):
+    m = re.search("(\d+)d", period_str)
+    if m == None:
+        raise ConfigError("Invalid period")
+    return timedelta(days=int(m.group(1)))
 
 def parse_tasks(config_file):
     tasks = []
@@ -27,9 +43,15 @@ def parse_tasks(config_file):
         actions = config.get(s, "actions")
         for a in actions.split(","):
             a = a.strip(" []{}")
-            t = actions_classes[a](s, [], dict(config.items(s)))
+            config_items = dict(config.items(s))
+            period = parse_period(config_items["period"])
+            drives_filepaths = []
+            t = actions_classes[a](s, period, drives_filepaths, config_items)
             tasks.append(t)
     return tasks
+
+def tasks_loop(tasks):
+    pass
 
 def main():
     # parse args
@@ -82,6 +104,7 @@ def main():
     logging.getLogger().addHandler(logging_handler)
 
     tasks = parse_tasks(args.config_file)
+    return tasks_loop(tasks)
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
