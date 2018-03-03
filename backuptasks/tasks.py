@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import logging
-from datetime import datetime
 
 import lvm
 
@@ -17,6 +16,7 @@ class Task:
         """
         self.__task_name = task_name
         self.__period = period
+        self.__last_run = None
         self.__logger = logging.getLogger(str(self))
         self.__drives = [];
         for dp in drives_filepaths:
@@ -25,6 +25,9 @@ class Task:
     def __str__(self):
         """ Return a pretty task name. """
         return self.__task_name
+
+    def get_period(self):
+        return self.__period
 
     def drives_sleeping(self):
         for d in self.__drives:
@@ -35,15 +38,15 @@ class Task:
     def last_run(self):
         return self.__last_run
 
-    def run_needed(self):
+    def run_needed(self, run_datetime):
         if self.__last_run == None:
             return True
         else:
-            return (datetime.now() - self.__last_run) > self.__period
+            return (run_datetime - self.__last_run) >= self.__period
 
-    def run(self):
+    def run(self, run_datetime):
         self.__logger.info("I should perform the task now!")
-        self.__last_run = datetime.now()
+        self.__last_run = run_datetime
         return 0
 
 class Snapshot(Task):

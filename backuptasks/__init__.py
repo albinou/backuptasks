@@ -11,6 +11,9 @@ import logging
 import configparser
 import sys
 import re
+import math
+from time import sleep
+from datetime import datetime
 from datetime import timedelta
 from hddfancontrol import Drive
 from hddfancontrol import colored_logging
@@ -28,10 +31,21 @@ class ConfigError(Exception):
         return self.__message
 
 def parse_period(period_str):
-    m = re.search("(\d+)d", period_str)
+    m = re.search("^(\d+)([wdhms])$", period_str)
     if m == None:
         raise ConfigError("Invalid period")
-    return timedelta(days=int(m.group(1)))
+    value = int(m.group(1))
+    unit = m.group(2)
+    if unit == 'w':
+        return timedelta(weeks=value)
+    elif unit == 'd':
+        return timedelta(days=value)
+    elif unit == 'h':
+        return timedelta(hours=value)
+    elif unit == 'm':
+        return timedelta(minutes=value)
+    else:
+        return timedelta(seconds=value)
 
 def parse_tasks(config_file):
     tasks = []
@@ -50,8 +64,25 @@ def parse_tasks(config_file):
             tasks.append(t)
     return tasks
 
-def tasks_loop(tasks):
-    pass
+def run_tasks(tasks, run_datetime):
+    for t in tasks:
+        if t.run_needed(run_datetime) and not t.drives_sleeping():
+            t.run(run_datetime)
+
+def event_loop(tasks):
+    gcd = int(tasks[0].get_period().total_seconds())
+    for t in tasks[1:]:
+        gcd = math.gcd(gcd, int(t.get_period().total_seconds()))
+    gcd_period = timedelta(seconds=gcd)
+
+    loop_start = datetime.now()
+    i = 0
+    while True:
+        theorical_time = loop_start + i * gcd_period
+        run_tasks(tasks, theorical_time)
+        i += 1
+        time_to_sleep = theorical_time + gcd_period - datetime.now()
+        sleep(time_to_sleep.total_seconds())
 
 def main():
     # parse args
@@ -104,7 +135,7 @@ def main():
     logging.getLogger().addHandler(logging_handler)
 
     tasks = parse_tasks(args.config_file)
-    return tasks_loop(tasks)
+    return event_loop(tasks)
 
 if __name__ == "__main__":
     sys.exit(main())
