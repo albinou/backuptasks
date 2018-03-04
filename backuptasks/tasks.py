@@ -24,7 +24,7 @@ class Task:
 
     def __str__(self):
         """ Return a pretty task name. """
-        return self.__task_name
+        return "Task/" + self.__task_name
 
     def get_period(self):
         return self.__period
@@ -45,7 +45,7 @@ class Task:
             return (run_datetime - self.__last_run) >= self.__period
 
     def run(self, run_datetime):
-        self.__logger.info("I should perform the task now!")
+        self.__logger.debug("Running task now")
         self.__last_run = run_datetime
         return 0
 
@@ -53,5 +53,12 @@ class Snapshot(Task):
 
     def __init__(self, task_name, period, drives_filepaths, config_items):
         super().__init__(task_name, period, drives_filepaths)
-        self.lv = lvm.LV(config_items["lvm_volume_name"])
-        self.lvm_snapshot_size = config_items["lvm_snapshot_size"]
+        self.__lv = lvm.LV(config_items["lvm_vg_name"], config_items["lvm_lv_name"])
+        self.__lvm_snapshot_size = config_items["lvm_snapshot_size"]
+        self.__lvm_snapshot_nb = config_items["lvm_snapshot_nb"]
+
+    def run(self, run_datetime):
+        super().run(run_datetime)
+        print("snapshots:")
+        for s in self.__lv.snapshots():
+            print(s["lv_name"])
