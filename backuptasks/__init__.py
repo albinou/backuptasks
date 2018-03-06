@@ -18,22 +18,15 @@ from datetime import timedelta
 from hddfancontrol import Drive
 from hddfancontrol import colored_logging
 
+import bt_errors
 import tasks
 
 actions_classes = { "snapshot": tasks.Snapshot }
 
-class ConfigError(Exception):
-
-    def __init__(self, message):
-        self.__message = message
-
-    def __str__(self):
-        return self.__message
-
 def parse_period(period_str):
-    m = re.search("^(\d+)([wdhms])$", period_str)
+    m = re.fullmatch("(\d+)([wdhms])", period_str)
     if m == None:
-        raise ConfigError("Invalid period")
+        raise bt_errors.ConfigError("Invalid period")
     value = int(m.group(1))
     unit = m.group(2)
     if unit == 'w':
