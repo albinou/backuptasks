@@ -17,7 +17,7 @@ class Task:
         self.__task_name = task_name
         self.__period = period
         self.__last_run = None
-        self.__logger = logging.getLogger(str(self))
+        self._logger = logging.getLogger(str(self))
         self.__drives = [];
         for dp in drives_filepaths:
             self.__drives.append(Drive(dp, None))
@@ -32,7 +32,7 @@ class Task:
     def drives_sleeping(self):
         for d in self.__drives:
             if d.isSleeping():
-                self.__logger.debug("Device %s is sleeping." % d)
+                self._logger.debug("Device %s is sleeping." % d)
                 return 1
 
     def last_run(self):
@@ -45,15 +45,18 @@ class Task:
             return (run_datetime - self.__last_run) >= self.__period
 
     def run(self, run_datetime):
-        self.__logger.debug("Running task now")
+        self._logger.debug("Running task now")
         self.__last_run = run_datetime
         return 0
 
 class Snapshot(Task):
 
-    def __init__(self, task_name, period, drives_filepaths, config_items):
+    def __init__(self, task_name, period, drives_filepaths, config_items,
+                 dry_run=False):
         super().__init__(task_name, period, drives_filepaths)
-        self.__lv = lvm.LV(config_items["lvm_vg_name"], config_items["lvm_lv_name"])
+        self.__lv = lvm.LV(config_items["lvm_vg_name"],
+                           config_items["lvm_lv_name"],
+                           dry_run)
         self.__lvm_snapshot_size = config_items["lvm_snapshot_size"]
         if "lvm_snapshot_chunksize" in config_items:
             self.__lvm_snapshot_chunksize = config_items["lvm_snapshot_chunksize"]
@@ -80,8 +83,9 @@ class Snapshot(Task):
         lv_snapshot_name = "%s-bt-%s" % (self.__lv.get_lv_name(),
                                          run_datetime.strftime("%Y%m%d"))
         if lv_snapshot_name in [s["lv_name"] for s in bt_snapshots]:
-            self.__logger.warning("Snapshot %s already exists" %
-                                  (lv_snapshot_name))
+            self._logger.warning("Snapshot %s already exists" %
+                                 (lv_snapshot_name))
+            return -1
         if len(bt_snapshots) >= self.__lvm_snapshot_nb:
             bt_oldest_snapshot = bt_snapshots[0]
             for s in bt_snapshots[1:]:
@@ -91,3 +95,4 @@ class Snapshot(Task):
         self.__lv.create_snapshot(lv_snapshot_name,
                                   self.__lvm_snapshot_size,
                                   self.__lvm_snapshot_chunksize)
+        return 0

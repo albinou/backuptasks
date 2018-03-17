@@ -40,7 +40,7 @@ def parse_period(period_str):
     else:
         return timedelta(seconds=value)
 
-def parse_tasks(config_file):
+def parse_tasks(config_file, dry_run=False):
     tasks = []
     f = open(config_file, 'r')
     config = configparser.ConfigParser()
@@ -53,7 +53,8 @@ def parse_tasks(config_file):
             config_items = dict(config.items(s))
             period = parse_period(config_items["period"])
             drives_filepaths = []
-            t = actions_classes[a](s, period, drives_filepaths, config_items)
+            t = actions_classes[a](s, period, drives_filepaths, config_items,
+                                   dry_run)
             tasks.append(t)
     return tasks
 
@@ -92,6 +93,11 @@ def main():
                             default="normal",
                             dest="verbosity",
                             help="Level of logging output")
+    arg_parser.add_argument("-n",
+                            "--dry-run",
+                            action="store_true",
+                            dest="dry_run",
+                            help="Perform a trial run with no changes made")
     arg_parser.add_argument("-b",
                             "--background",
                             action="store_true",
@@ -127,7 +133,7 @@ def main():
     logging_handler.setFormatter(logging_formatter)
     logging.getLogger().addHandler(logging_handler)
 
-    tasks = parse_tasks(args.config_file)
+    tasks = parse_tasks(args.config_file, args.dry_run)
     return event_loop(tasks)
 
 if __name__ == "__main__":

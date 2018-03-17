@@ -15,9 +15,10 @@ class LV:
     __run_cmd_err_txt = ("%s failed with error code %i. Check that the script "
                          "is run as root.")
 
-    def __init__(self, vg_name, lv_name):
+    def __init__(self, vg_name, lv_name, dry_run=False):
         self.__vg_name = vg_name
         self.__lv_name = lv_name
+        self.__dry_run = dry_run
         self.__logger = logging.getLogger(str(self))
 
     def __str__(self):
@@ -41,19 +42,21 @@ class LV:
                  "--name", snapshot_lv_name,
                  "--size", snapshot_size,
                  "--snapshot",
-                 "--test",
                  "%s/%s" % (self.__vg_name, self.__lv_name)]
         if chunksize:
             lvcmd.insert(-1, "--chunksize")
             lvcmd.insert(-1, chunksize)
+        if self.__dry_run:
+            lvcmd.insert(-1, "--test")
         self.__run_cmd(lvcmd)
 
     def remove_snapshot(self, snapshot_lv_name):
         lvcmd = ["lvremove",
                  "--select", "lv_name=%s,origin=%s" % (snapshot_lv_name, self.__lv_name),
-                 "--test",
                  "--yes",
                  self.__vg_name]
+        if self.__dry_run:
+            lvcmd.insert(-1, "--test")
         self.__run_cmd(lvcmd)
 
     def snapshots(self):
